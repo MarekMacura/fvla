@@ -99,3 +99,46 @@ WHERE {
   FILTER(?score > 0.85)  
 }  
 ORDER BY DESC(?score)  
+
+
+# Main one combined:
+
+PREFIX soft: <http://example.org/software#>  
+PREFIX cpe:  <http://example.org/cpe#>  
+PREFIX cve:  <http://example.org/cve#>  
+PREFIX FUZZY: <http://example.org/fuzzy#>  
+  
+SELECT ?vendor ?product ?version  
+       ?cpeVendor ?cpeProduct  
+       ?score  
+       ?cveId ?description ?cvss ?severity  
+WHERE {  
+  # Installed software  
+  ?sw a soft:Software ;  
+      soft:vendor ?vendor ;  
+      soft:product ?product ;  
+      soft:version ?version .  
+  
+  # Known CPE entries  
+  ?cpe a cpe:Platform ;  
+       cpe:vendor ?cpeVendor ;  
+       cpe:product ?cpeProduct .  
+  
+  # Compute fuzzy similarity on both vendor and product  
+  BIND(FUZZY:similarity(?vendor, ?cpeVendor) AS ?vScore)  
+  BIND(FUZZY:similarity(?product, ?cpeProduct) AS ?pScore)  
+  BIND((?vScore + ?pScore) / 2 AS ?score)  
+  
+  # Only keep good matches  
+  FILTER(?score > 0.85)  
+  
+  # Link from CPE → CVE  
+  ?cve cve:affects ?cpe .  
+  
+  # Optional CVE details  
+  OPTIONAL { ?cve cve:cveId ?cveId }  
+  OPTIONAL { ?cve cve:description ?description }  
+  OPTIONAL { ?cve cve:cvssScore ?cvss }  
+  OPTIONAL { ?cve cve:severity ?severity }  
+}  
+ORDER BY DESC(?score)  

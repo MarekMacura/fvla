@@ -153,3 +153,19 @@ Version-based CVE matching
 Dependency vulnerability propagation
 Automatic isAffectedBy inference from sameAs links
 Integrate owlrl into your main.py after ingestion but before dashboard launch, so the dashboard queries automatically see inferred vulnerabilities.
+
+
+
+. How it works after integration
+Load ontology (ontology.ttl) — defines classes, properties, domains, ranges.
+Load raw data — installed software, CPEs, CVEs.
+Run apply_reasoning():
+OWL RL reasoning fills in:
+sameAs merging
+subclass classification
+inverse/transitive properties
+Custom SWRL-style Python rules:
+Propagate vulnerabilities via sameAs
+Propagate via dependsOn
+Infer via version range
+Dashboard queries now see explicit + inferred triples without any query changes.
