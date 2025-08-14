@@ -1,0 +1,50 @@
+{% extends "base.html" %}  
+{% block content %}  
+<h2>Ad-hoc Fuzzy Vulnerability Search</h2>  
+<form method="post">  
+    Vendor: <input type="text" name="vendor" value="{{ vendor }}">  
+    Product: <input type="text" name="product" value="{{ product }}">  
+    Threshold: <input type="text" name="threshold" value="{{ threshold }}">  
+    <input type="submit" value="Search">  
+</form>  
+  
+{% if results is not none %}  
+<h3>Results:</h3>  
+<table>  
+<tr>  
+    <th>CPE Vendor</th>  
+    <th>CPE Product</th>  
+    <th>Similarity Score</th>  
+    <th>CVE ID</th>  
+    <th>Description</th>  
+    <th>CVSS</th>  
+    <th>Severity</th>  
+</tr>  
+{% for row in results %}  
+<tr>  
+    <td>{{ row.cpeVendor }}</td>  
+    <td>{{ row.cpeProduct }}</td>  
+    <td>{{ "%.2f"|format(row.score|float) if row.score else "" }}</td>  
+    <td>{{ row.cveId }}</td>  
+    <td>{{ row.description }}</td>  
+    <td>{{ row.cvss }}</td>  
+    <td>  
+        {% if row.severity %}  
+            {% if row.severity|upper == "CRITICAL" %}  
+                <span style="color:white; background:red; padding:2px 5px;">{{ row.severity }}</span>  
+            {% elif row.severity|upper == "HIGH" %}  
+                <span style="color:black; background:orange; padding:2px 5px;">{{ row.severity }}</span>  
+            {% elif row.severity|upper == "MEDIUM" %}  
+                <span style="color:black; background:yellow; padding:2px 5px;">{{ row.severity }}</span>  
+            {% elif row.severity|upper == "LOW" %}  
+                <span style="color:white; background:green; padding:2px 5px;">{{ row.severity }}</span>  
+            {% else %}  
+                {{ row.severity }}  
+            {% endif %}  
+        {% endif %}  
+    </td>  
+</tr>  
+{% endfor %}  
+</table>  
+{% endif %}  
+{% endblock %}  

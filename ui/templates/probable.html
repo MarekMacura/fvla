@@ -1,0 +1,28 @@
+{% extends "base.html" %}  
+{% block content %}  
+<h2>Probable Vulnerabilities (Fuzzy Matched)</h2>  
+<table border="1">  
+<tr>  
+    <th>Vendor</th>  
+    <th>Product</th>  
+    <th>Version</th>  
+    <th>CVE ID</th>  
+    <th>Description</th>  
+    <th>CVSS Score</th>  
+    <th>Severity</th>  
+    <th>Match Score</th>  
+</tr>  
+{% for row in results %}  
+<tr>  
+    <td>{{ row.vendor }}</td>  
+    <td>{{ row.product }}</td>  
+    <td>{{ row.version }}</td>  
+    <td>{{ row.cveId }}</td>  
+    <td>{{ row.description }}</td>  
+    <td>{{ row.cvss }}</td>  
+    <td>{{ row.severity }}</td>  
+    <td>{{ "%.2f"|format(row.score|float) if row.score else "" }}</td>  
+</tr>  
+{% endfor %}  
+</table>  
+{% endblock %}  

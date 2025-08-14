@@ -1,0 +1,155 @@
+Python 3 framework for full vulnerability lifecycle automation, with:
+Data ingestion & synchronization from NIST NVD CVE JSON feeds (incremental using .meta lastModifiedDate)
+Internal sources for installed software (vendor, product, version)
+Semantic representation in RDF/OWL for reasoning
+Entity matching between installed software and CPE match criteria (two matching modes: ingestion-time + query-time)
+SPARQL querying, rules, and reasoning
+Two RDF storage backends:
+Local Turtle file
+Oracle Graph / RDF
+UI Dashboard for monitoring & SPARQL queries
+Ability to create test cases
+Unit tests included
+
+#1 update tested
+Both software and CVE/CPE data now have URI-safe identifiers
+Can match directly in SPARQL with regex or ontology reasoning
+The RDF model is consistent and ready for semantic reasoning
+Works with Turtle and Oracle Graph backends
+
+
+#2 update 
+ two matching modes:
+Ingestion-time fuzzy matching (already implemented in EntityMatcher) → pre-links installed software to CPE URIs when they are similar enough
+Query-time fuzzy matching inside SPARQL using a custom function we register in RDFLib → allows dynamic similarity queries
+
+Workflow Overview Now
+Ingestion-time matching: Adds possibleVulnerability triples for high-score matches
+Query-time matching: Use fuzzy:similarity() in SPARQL for ad-hoc similarity checks
+
+
+-------- BIG
+
+
+2. How It Works
+Pre-linking is already done by fuzzy_linker.py during ingestion.
+/probable runs a fixed SPARQL query that:
+Finds installed software
+Lists linked CVEs from ingestion-time fuzzy matching
+Shows the match score from ingestion
+Results are sorted by match score so the most probable vulnerabilities are on top.
+
+next update tested:
+
+5. Benefits
+✅ Users get full vulnerability details instantly
+✅ No need to run custom SPARQL for typical use case
+✅ Severity and CVSS score help prioritize patching
+✅ Still supports ad-hoc fuzzy searches in the query tab
+
+
+
+That’s a really good question — because right now our RDF graph is mostly static triples + fuzzy matching at query time.
+With OWL reasoning, we can turn our graph into something smarter that automatically derives new facts, relationships, and vulnerability links without hardcoding them.
+1. What reasoning can do for us in this project
+OWL (Web Ontology Language) reasoning lets us:
+Infer implicit facts from the data we already have
+Classify software into categories automatically
+Propagate vulnerabilities to related software without manually linking them
+Use transitive & symmetric relationships to reduce manual linking
+Example in our context:
+Without reasoning	With reasoning
+We have to explicitly say “Software X is vulnerable to CVE‑Y”	If we know “Software X is version 1.0” and “CVE‑Y affects all versions ≤ 2.0” → the reasoner can infer the vulnerability automatically
+We store fuzzy match scores manually	We can define rules that if similarity > 0.9 → infer cve:possibleVulnerability link
+We store vendor/product categories manually	Use ontology to infer soft:WebServer if vendor/product matches known patterns
+We link only exact matches	Define owl:sameAs between equivalent product URIs and let the reasoner merge facts
+2. OWL constructs that help in vulnerability graphs
+Here are some practical ontology constructs we can define:
+a) Class hierarchy
+
+soft:Software rdf:type owl:Class .  
+soft:WebServer rdfs:subClassOf soft:Software .  
+soft:Database rdfs:subClassOf soft:Software .  
+→ If you say Apache_HTTP_Server rdf:type soft:WebServer and
+soft:WebServer rdfs:subClassOf soft:Software,
+the reasoner will automatically infer Apache_HTTP_Server rdf:type soft:Software.
+b) Property characteristics
+Transitive properties — e.g., cve:affects can be made transitive if a vulnerability affects a component and that component is part of another system.
+Symmetric properties — e.g., sameAs (if A sameAs B → B sameAs A automatically).
+Inverse properties — e.g., if cve:affects is inverse of soft:isAffectedBy, the reasoner can fill in the reverse link.
+
+cve:affects rdf:type owl:ObjectProperty ;  
+    owl:inverseOf soft:isAffectedBy .  
+c) Restrictions
+You can define rules like:
+
+soft:SoftwareWithCVE rdf:type owl:Class ;  
+    owl:equivalentClass [  
+        rdf:type owl:Class ;  
+        owl:intersectionOf (  
+            soft:Software  
+            [ rdf:type owl:Restriction ;  
+              owl:onProperty soft:isAffectedBy ;  
+              owl:someValuesFrom cve:Vulnerability  
+            ]  
+        )  
+    ] .  
+→ Any software with at least one linked CVE will be inferred as a soft:SoftwareWithCVE.
+d) Equivalence
+If a CPE product and our internal software record refer to the same thing:
+
+<http://example.org/software/apache_http_server> owl:sameAs <http://example.org/cpe/apache_http_server> .  
+→ The reasoner will merge their facts, so CVE links from CPE side will appear automatically on our software.
+3. Rule-based reasoning (SWRL / SHACL rules)
+OWL’s built-in inference is mostly class/property logic.
+For more custom vulnerability logic, we can use SWRL (Semantic Web Rule Language):
+Example SWRL rule:
+
+soft:Software(?s) ^ soft:version(?s, ?v) ^  
+cve:AffectsVersion(?cve, ?maxV) ^  
+swrlb:lessThanOrEqual(?v, ?maxV)  
+→ soft:isAffectedBy(?s, ?cve)  
+Meaning:
+If software has a version ≤ the affected version in a CVE, then infer it is affected by that CVE.
+This is gold for vulnerability analysis because you can encode:
+Version ranges
+OS dependencies
+Component inheritance
+4. How to implement reasoning in Python
+We can use:
+owlrl — simple OWL 2 RL reasoner for RDFLib
+FuXi — rule-based reasoning
+rdflib.plugins.sparql + custom function for some rule logic
+Example with owlrl:
+
+from rdflib import Graph  
+from owlrl import DeductiveClosure, OWLRL_Semantics  
+  
+g = Graph()  
+g.parse("data.ttl", format="turtle")  
+  
+DeductiveClosure(OWLRL_Semantics).expand(g)  
+  
+# Now g contains inferred triples  
+print(len(g))  
+After this, queries will see both explicit and inferred triples.
+5. How reasoning helps our workflow
+Right now:
+We ingest software list
+We ingest CVEs
+We fuzzy link them
+With reasoning:
+We can say:
+“If a CPE is affected by CVE, and my software is sameAs that CPE → my software is affected by CVE” (no manual linking)
+We can propagate vulnerabilities through dependencies:
+“If Software A depends on Library B, and Library B has CVE‑X → Software A is affected by CVE‑X”
+We can detect category vulnerabilities:
+“If all WebServers with version < 2.4.50 are vulnerable to CVE‑Y → infer that my Apache 2.4.48 is vulnerable”
+6. Suggested next step for you
+I can:
+Design a small OWL ontology for our domain (soft:, cpe:, cve:)
+Add inference rules for:
+Version-based CVE matching
+Dependency vulnerability propagation
+Automatic isAffectedBy inference from sameAs links
+Integrate owlrl into your main.py after ingestion but before dashboard launch, so the dashboard queries automatically see inferred vulnerabilities.

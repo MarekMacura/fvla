@@ -1,0 +1,5 @@
+If you want, I can extend this with Oracle RDF backend support and SPARQL entity matching rules.
+Do you want me to now add the CPE parsing and ingestion from NVD feed into RDF so matching works end-to-end? That will connect the vulnerability data to installed software directly.
+
+
+We can extend query-time fuzzy matching to also include vendor & version similarity in one combined score, and even integrate Levenshtein distance for better matching than difflib.

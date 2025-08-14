@@ -1,0 +1,23 @@
+<html>  
+<head>  
+    <title>Vulnerability Dashboard</title>  
+    <style>  
+        body { font-family: Arial, sans-serif; }  
+        nav a { margin-right: 15px; }  
+        table { border-collapse: collapse; width: 100%; }  
+        th, td { border: 1px solid #ccc; padding: 6px; }  
+        th { background-color: #eee; }  
+    </style>  
+</head>  
+<body>  
+    <h1>Vulnerability Dashboard</h1>  
+   <nav>  
+    <a href="{{ url_for('index') }}">SPARQL Query</a> |  
+    <a href="{{ url_for('probable') }}">Probable Vulnerabilities</a> |  
+    <a href="{{ url_for('adhoc') }}">Ad-hoc Fuzzy Search</a> |  
+    <a href="{{ url_for('toggle_reasoning') }}">Apply Reasoning</a>  
+    </nav>  
+    <hr>  
+    {% block content %}{% endblock %}  
+</body>  
+</html>  

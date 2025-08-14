@@ -1,0 +1,25 @@
+{% extends "base.html" %}  
+{% block content %}  
+<h2>Run SPARQL Query</h2>  
+<form method="post">  
+<textarea name="query" rows="10" cols="80">{{ query }}</textarea><br>  
+<input type="submit" value="Run Query">  
+</form>  
+{% if results %}  
+<h3>Results:</h3>  
+<table border="1">  
+<tr>  
+{% for col in results.vars %}  
+<th>{{ col }}</th>  
+{% endfor %}  
+</tr>  
+{% for row in results %}  
+<tr>  
+{% for val in row %}  
+<td>{{ val }}</td>  
+{% endfor %}  
+</tr>  
+{% endfor %}  
+</table>  
+{% endif %}  
+{% endblock %}  

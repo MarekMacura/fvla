@@ -1,0 +1,14 @@
+soft:Software(?s1) ^ soft:Software(?s2) ^  
+owl:sameAs(?s1, ?s2) ^ cve:Vulnerability(?v) ^  
+cve:affects(?v, ?s1)  
+→ cve:affects(?v, ?s2)  
+
+soft:Software(?s) ^ soft:version(?s, ?ver) ^  
+cve:Vulnerability(?v) ^  
+cve:minVersion(?v, ?min) ^ swrlb:lessThanOrEqual(?min, ?ver) ^  
+cve:maxVersion(?v, ?max) ^ swrlb:greaterThanOrEqual(?max, ?ver)  
+→ cve:affects(?v, ?s)  
+
+soft:Software(?s1) ^ soft:dependsOn(?s1, ?s2) ^  
+cve:Vulnerability(?v) ^ cve:affects(?v, ?s2)  
+→ cve:affects(?v, ?s1)  

@@ -1,0 +1,101 @@
+#To find software matching vulnerable CPE strings:
+
+PREFIX soft: <http://example.org/software#>  
+PREFIX cve: <http://example.org/cve#>  
+PREFIX cpe: <http://example.org/cpe#>  
+  
+SELECT ?vendor ?product ?version ?cveId  
+WHERE {  
+  ?sw a soft:Software ;  
+      soft:vendor ?vendor ;  
+      soft:product ?product ;  
+      soft:version ?version .  
+  ?cve a cve:Vulnerability ;  
+       cve:affects ?cpe ;  
+       cve:cveId ?cveId .  
+  ?cpe cpe:criteria ?criteria .  
+  FILTER regex(lcase(str(?criteria)), lcase(?vendor))   
+  FILTER regex(lcase(str(?criteria)), lcase(?product))  
+}  
+
+
+# get all probable vulnerabilities immediately.
+PREFIX soft: <http://example.org/software#>  
+PREFIX cve: <http://example.org/cve#>  
+
+SELECT ?vendor ?product ?cveId ?score  
+WHERE {  
+  ?sw a soft:Software ;  
+      soft:vendor ?vendor ;  
+      soft:product ?product ;  
+      cve:possibleVulnerability ?cve .  
+  OPTIONAL { ?cve cve:cveId ?cveId }  
+  OPTIONAL { ?sw cve:matchScore ?score }  
+}  
+ORDER BY DESC(?score)  
+
+
+
+
+# Ad‑hoc similarity between installed software and CPEs
+
+#What it does
+#?vendor / ?product → from installed software
+#?cpeVendor / ?cpeProduct → from parsed CPE URIs
+#FUZZY:similarity(a, b) → returns a value between 0 (completely different) and 1 (exact match)
+#We take the average of vendor and product similarity
+#FILTER(?score > 0.8) — only show matches above 80% similarity
+#Results sorted from most to least similar
+
+PREFIX soft: <http://example.org/software#>  
+PREFIX cpe:  <http://example.org/cpe#>  
+PREFIX FUZZY: <http://example.org/fuzzy#>  
+  
+SELECT ?vendor ?product ?cpeVendor ?cpeProduct ?score  
+WHERE {  
+  ?sw a soft:Software ;  
+      soft:vendor ?vendor ;  
+      soft:product ?product .  
+  ?cpe a cpe:Platform ;  
+       cpe:vendor ?cpeVendor ;  
+       cpe:product ?cpeProduct .  
+  
+  BIND(FUZZY:similarity(?vendor, ?cpeVendor) AS ?vScore)  
+  BIND(FUZZY:similarity(?product, ?cpeProduct) AS ?pScore)  
+  BIND((?vScore + ?pScore) / 2 AS ?score)  
+  
+  FILTER(?score > 0.8)  
+}  
+ORDER BY DESC(?score)  
+
+
+
+# Search for a specific product name
+PREFIX cpe:  <http://example.org/cpe#>  
+PREFIX FUZZY: <http://example.org/fuzzy#>  
+  
+SELECT ?cpeVendor ?cpeProduct ?score  
+WHERE {  
+  ?cpe a cpe:Platform ;  
+       cpe:vendor ?cpeVendor ;  
+       cpe:product ?cpeProduct .  
+  BIND(FUZZY:similarity(?cpeProduct, "firefox") AS ?score)  
+  FILTER(?score > 0.7)  
+}  
+ORDER BY DESC(?score)  
+
+
+# Search for a specific vendor/product pair
+PREFIX cpe:  <http://example.org/cpe#>  
+PREFIX FUZZY: <http://example.org/fuzzy#>  
+  
+SELECT ?cpeVendor ?cpeProduct ?score  
+WHERE {  
+  ?cpe a cpe:Platform ;  
+       cpe:vendor ?cpeVendor ;  
+       cpe:product ?cpeProduct .  
+  BIND((FUZZY:similarity(?cpeVendor, "apache") +  
+        FUZZY:similarity(?cpeProduct, "http server")) / 2 AS ?score)  
+  FILTER(?score > 0.85)  
+}  
+ORDER BY DESC(?score)  
